@@ -1,34 +1,85 @@
 let canvas;
+let tankPos, triPos, tankLevel;
+let tankDiagram, triDiagram;
+let currentFrame, frameCount;
+let once = true;
+let startValueSlider, impulseGainSlider, impulseFrequencySlider,lossSlider;
 
 function setup() {
-	canvas = createCanvas(screen.width * 0.98, screen.height)
-		.style('z-index', -1);
-	background(200);
+	if (once) {
+		let isRunning = true;
+		frameRate(120);
 
-	let isRunning = true;
-	let stopButton = createButton('Stop').size(100, 75).mouseClicked(function () {
-		if (isRunning) noLoop();
-		else loop();
-		isRunning = !isRunning;
-	})
+		createDiv('').id('menu-strip');
+		createDiv('').id('button-wrapper').parent('menu-strip').style('width', '120px').style('display', 'inline-block');
+		createDiv('').id('slider-wrapper').parent('menu-strip').style('display', 'inline-block');
+		createDiv('').id('slider-wrapper2').parent('menu-strip').style('display', 'inline-block');
+
+		canvas = createCanvas(screen.width * 0.98, screen.height)
+			.style('z-index', -1)
+			.position(0, 125);
+
+		 createButton('Stop')
+			.size(100, 50)
+			.style('font-size', '1em')
+			.parent('button-wrapper')
+			.mouseClicked(function () {
+				if (isRunning) {
+					noLoop();
+					this.elt.textContent = 'Start';
+				}
+				else {
+					loop();
+					this.elt.textContent = 'Stop'
+				}
+				isRunning = !isRunning;
+			});
+
+		 createButton('Újraindítás')
+			.size(100, 50)
+			.style('font-size', '1em')
+			.parent('button-wrapper')
+			.mouseClicked(function () {
+				isRunning = true;
+				loop();
+				setup();
+			});
+
+		createDiv('Kezdő szint').parent('slider-wrapper');
+		startValueSlider = createSlider(0, 1, 1, 0).parent('slider-wrapper');
+		createDiv('Impulzus nagyság').parent('slider-wrapper');
+		impulseGainSlider = createSlider(0, 100, 90).parent('slider-wrapper');
+
+		createDiv('Impulzus gyakoriság').parent('slider-wrapper2');
+		impulseFrequencySlider = createSlider(1, 300, 150, 5).parent('slider-wrapper2');
+		createDiv('Veszteség').parent('slider-wrapper2');
+		lossSlider=createSlider(0, 1, 0.5,0).parent('slider-wrapper2');
 
 
+		once = false
+	}
+
+	clear();
+	background(230);
+	tankDiagram = new Array(1500);
+	triDiagram = new Array(1500);
+	currentFrame = 0;
+	frameCount = 0;
+
+	tankPos = {x1: 150, y1: 50, x2: 250, y2: 300};
+	tankLevel = {x1: 150, y1: 50 + (tankPos.y2 - tankPos.y1) * (1 - startValueSlider.value()), x2: 250, y2: 300};
+	triPos = {x: 500, y: 300, h: 250, fi: Math.PI / 8};
+	triLevel = {x: 500, y: 300, h: 250, fi: Math.PI / 8};
+
+	stroke(150);
+	for (let i = 0; i < 7; i++) {
+		line(tankPos.x2, tankPos.y1 + (tankPos.y2 - tankPos.y1) / 6 * i, screen.width, tankPos.y1 + (tankPos.y2 - tankPos.y1) / 6 * i)
+	}
 }
 
-let tankPos, triPos, tankLevel;
-let tankDiagram = [], triDiagram = [];
-tankPos = {x1: 150, y1: 50, x2: 250, y2: 300};
-tankLevel = {x1: 150, y1: 50, x2: 250, y2: 300};
-triPos = {x: 500, y: 300, h: 250, fi: Math.PI / 8};
-triLevel = {x: 500, y: 300, h: 250, fi: Math.PI / 8};
-let start = Date.now();
-let frameCount = 0;
-
-
-//setInterval(impulse, 3000);
 
 function draw() {
-	clear();
+	//clear();
 	fill(200);
 	rectMode(CORNERS);
 	stroke(25);
@@ -36,26 +87,30 @@ function draw() {
 	fill(0, 0, 255);
 	rect(tankLevel.x1, tankLevel.y1, tankLevel.x2, tankLevel.y2, 2);
 	//if (tankLevel.y1 !== tankLevel.y2) tankLevel.y1++;
-	if (tankLevel.y1 <= tankLevel.y2) loss(tankLevel, 0.5, 'RECT');
+	if (tankLevel.y1 <= tankLevel.y2) loss(tankLevel,lossSlider.value() , 'RECT');
+	tankDiagram[currentFrame] = {val: tankLevel.y1 - tankPos.y1, t: currentFrame};
+	drawGraph(tankPos.x2 + 25, tankPos.y1, 500, 400, tankDiagram);
 	/*fill(200);
 	drawTriangle(triPos.x, triPos.y, triPos.h, triPos.fi);
 	fill(0, 255, 0);
 	drawTriangle(triLevel.x, triLevel.y, triLevel.h, triLevel.fi);
 	if (triLevel.y <= triPos.y) loss(triLevel, 0.5, 'TRIANGLE');
 */
-	tankDiagram.push({val: tankLevel.y1 - tankPos.y1, t: Date.now() - start});
-	drawGraph(tankPos.x2 + 200, tankPos.y1, 500, 400, tankDiagram);
+	currentFrame++;
 
 	frameCount++;
-	if (frameCount === 150) {
-		impulse();
+	if (frameCount >= impulseFrequencySlider.value()) {
+		impulse(impulseGainSlider.value() / 100);
 		frameCount = 0;
 	}
 }
 
 
-function impulse() {
-	tankLevel.y1 = tankPos.y1;
+function impulse(gain) {
+	//if (tankPos.y2 - (tankPos.y2 - tankPos.y1) * gain < tankLevel.y1) tankLevel.y1 = tankPos.y2 - (tankPos.y2 - tankPos.y1) * gain
+
+	tankLevel.y1 -= (tankPos.y2 - tankPos.y1) * gain;
+	if (tankLevel.y1 < tankPos.y1) tankLevel.y1 = tankPos.y1
 }
 
 
@@ -81,27 +136,13 @@ function loss(pos, rate, type) {
 	}
 }
 
+
 function drawGraph(x, y, w, h, arr) {
-
-	stroke(230);
-	for (let i = 0; i < 6; i++) {
-		line(tankPos.x2, tankPos.y1 + (tankPos.y2 - tankPos.y1) / 5 * i, screen.width, tankPos.y1 + (tankPos.y2 - tankPos.y1) / 5 * i)
-	}
-	rectMode(CENTER);
-	fill(130);
-	//rect(x,y,w,h);
 	stroke(255, 0, 0);
-	if (arr.length >= 2) {
-		for (let i = 0; i < arr.length - 1; i++) {
-			line(arr[i].t / 10 + x, arr[i].val + y, arr[i + 1].t / 10 + x, arr[i + 1].val + y);
-		}
-		if (arr[arr.length - 1].t / 10 + x >= screen.width) {
-			tankDiagram = [];
-			start = Date.now();
-		}
+	if (currentFrame > 1) {
+		line(arr[currentFrame].t + x, arr[currentFrame].val + y, arr[currentFrame - 1].t + x, arr[currentFrame - 1].val + y);
+		if (arr[currentFrame].t + x >= screen.width || currentFrame === 1499) setup();
 	}
-
-
 }
 
 
