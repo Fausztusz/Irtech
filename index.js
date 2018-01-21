@@ -3,7 +3,10 @@ let tankPos, triPos, tankLevel;
 let tankDiagram, triDiagram;
 let currentFrame, frameCount;
 let once = true;
-let startValueSlider, impulseGainSlider, impulseFrequencySlider,lossSlider;
+let radioButton, startValueSlider, impulseGainSlider, impulseFrequencySlider, lossSlider;
+let wrapper1, wrapper2;
+let options = [], selectedOption = 0;
+
 
 function setup() {
 	if (once) {
@@ -12,14 +15,16 @@ function setup() {
 
 		createDiv('').id('menu-strip');
 		createDiv('').id('button-wrapper').parent('menu-strip').style('width', '120px').style('display', 'inline-block');
-		createDiv('').id('slider-wrapper').parent('menu-strip').style('display', 'inline-block');
-		createDiv('').id('slider-wrapper2').parent('menu-strip').style('display', 'inline-block');
+		createDiv('').id('options-wrapper').parent('menu-strip').style('width', '600px').style('display', 'inline-block');
+		wrapper1=createDiv('').id('slider-wrapper').parent('menu-strip').style('display', 'inline-block');
+		wrapper2=createDiv('').id('slider-wrapper2').parent('menu-strip').style('display', 'inline-block');
+		//	createDiv('').id('options-wrapper2').parent('menu-strip').style('width', '200px').style('display', 'inline-block');
 
 		canvas = createCanvas(screen.width * 0.98, screen.height)
 			.style('z-index', -1)
 			.position(0, 125);
 
-		 createButton('Stop')
+		createButton('Stop')
 			.size(100, 50)
 			.style('font-size', '1em')
 			.parent('button-wrapper')
@@ -35,7 +40,7 @@ function setup() {
 				isRunning = !isRunning;
 			});
 
-		 createButton('Újraindítás')
+		createButton('Újraindítás')
 			.size(100, 50)
 			.style('font-size', '1em')
 			.parent('button-wrapper')
@@ -45,16 +50,63 @@ function setup() {
 				setup();
 			});
 
+		createDiv('Opciók:').parent('options-wrapper');
+		radioButton = createRadio()
+			.parent('options-wrapper')
+			.style('display', 'inline-block')
+			.style('align-items', 'middle')
+			.style('flex-direction', 'column')
+			.style('-moz-user-select', 'none')
+			.style('-webkit-user-select', 'none')
+			.style('user-select', 'none')
+			.changed(function (ev) {
+				switch (ev.target) {
+					case options[0]:
+						selectedOption = 0;
+						setup();
+						break;
+					case options[1]:
+						selectedOption = 1;
+						setup();
+						break;
+					case options[2]:
+						selectedOption = 2;
+						setup();
+						break;
+					case options[3]:
+						selectedOption = 3;
+						setup();
+						break;
+					default:
+						console.log('Error!')
+				}
+
+			});
+
+
+		//createDiv('').parent('options-wrapper').child(radioButton.option('Egységválasz'));
+		//createDiv('').parent('options-wrapper').child(radioButton.option('Kétszeres válasz'));
+		//createDiv('').parent('options-wrapper').child(radioButton.option('Időben eltolt gerjesztés'));
+		//createDiv('').parent('options-wrapper').child(radioButton.option('Interaktív'));
+
+
+		options.push(radioButton.option('Egységválasz'));
+		options.push(radioButton.option('Kétszeres válasz'));
+		options.push(radioButton.option('Időben eltolt gerjesztés'));
+		options.push(radioButton.option('Interaktív'));
+		options[0].checked = true;
+		textAlign(CENTER);
+
+
 		createDiv('Kezdő szint').parent('slider-wrapper');
-		startValueSlider = createSlider(0, 1, 1, 0).parent('slider-wrapper');
+		startValueSlider = createSlider(0, 100, 100).parent('slider-wrapper');
 		createDiv('Impulzus nagyság').parent('slider-wrapper');
 		impulseGainSlider = createSlider(0, 100, 90).parent('slider-wrapper');
 
-		createDiv('Impulzus gyakoriság').parent('slider-wrapper2');
-		impulseFrequencySlider = createSlider(1, 300, 150, 5).parent('slider-wrapper2');
+		createDiv('Impulzus ciklusidő').parent('slider-wrapper2');
+		impulseFrequencySlider = createSlider(0, 300, 150, 5).parent('slider-wrapper2');
 		createDiv('Veszteség').parent('slider-wrapper2');
-		lossSlider=createSlider(0, 1, 0.5,0).parent('slider-wrapper2');
-
+		lossSlider = createSlider(0, 1, 0.5, 0).parent('slider-wrapper2');
 
 		once = false
 	}
@@ -66,10 +118,13 @@ function setup() {
 	currentFrame = 0;
 	frameCount = 0;
 
+
+	modes(selectedOption);
 	tankPos = {x1: 150, y1: 50, x2: 250, y2: 300};
-	tankLevel = {x1: 150, y1: 50 + (tankPos.y2 - tankPos.y1) * (1 - startValueSlider.value()), x2: 250, y2: 300};
+	tankLevel = {x1: 150, y1: 50 + (tankPos.y2 - tankPos.y1) * (1 - startValueSlider.value() / 100), x2: 250, y2: 300};
 	triPos = {x: 500, y: 300, h: 250, fi: Math.PI / 8};
 	triLevel = {x: 500, y: 300, h: 250, fi: Math.PI / 8};
+
 
 	stroke(150);
 	for (let i = 0; i < 7; i++) {
@@ -87,7 +142,7 @@ function draw() {
 	fill(0, 0, 255);
 	rect(tankLevel.x1, tankLevel.y1, tankLevel.x2, tankLevel.y2, 2);
 	//if (tankLevel.y1 !== tankLevel.y2) tankLevel.y1++;
-	if (tankLevel.y1 <= tankLevel.y2) loss(tankLevel,lossSlider.value() , 'RECT');
+	if (tankLevel.y1 <= tankLevel.y2) loss(tankLevel, lossSlider.value(), 'RECT');
 	tankDiagram[currentFrame] = {val: tankLevel.y1 - tankPos.y1, t: currentFrame};
 	drawGraph(tankPos.x2 + 25, tankPos.y1, 500, 400, tankDiagram);
 	/*fill(200);
@@ -97,11 +152,13 @@ function draw() {
 	if (triLevel.y <= triPos.y) loss(triLevel, 0.5, 'TRIANGLE');
 */
 	currentFrame++;
-
 	frameCount++;
-	if (frameCount >= impulseFrequencySlider.value()) {
-		impulse(impulseGainSlider.value() / 100);
-		frameCount = 0;
+
+	if (impulseFrequencySlider.value() !== 0) {
+		if (frameCount >= impulseFrequencySlider.value()) {
+			impulse(impulseGainSlider.value() / 100);
+			frameCount = 0;
+		}
 	}
 }
 
@@ -154,4 +211,46 @@ function drawGraph(x, y, w, h, arr) {
  */
 function drawTriangle(x, y, h, fi) {
 	triangle(x - h * Math.tan(fi), y - h, x + h * Math.tan(fi), y - h, x, y)
+}
+
+function modes(mode) {
+	switch (mode) {
+		//Egységugrás
+		case 0:
+			startValueSlider.value(0);
+			lossSlider.value(0);
+			impulseFrequencySlider.value(75);
+			impulseGainSlider.value(10);
+			hide();
+			break;
+			//Kétszeres egységugrás
+		case 1:
+			startValueSlider.value(0);
+			lossSlider.value(0);
+			impulseFrequencySlider.value(75);
+			impulseGainSlider.value(20);
+			hide();
+			break;
+			//Homokvár
+		case 2:
+			startValueSlider.value(100);
+			lossSlider.value(0.5);
+			impulseFrequencySlider.value(150);
+			impulseGainSlider.value(100);
+			hide();
+			break;
+			//Interaktív
+		case 3:
+			wrapper1.style('display','inline-block');
+			wrapper2.style('display','inline-block');
+			break;
+
+		default: 
+			console.log('Mode error')
+	}
+
+	function hide() {
+		wrapper1.style('display','none');
+		wrapper2.style('display','none');
+	}
 }
