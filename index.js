@@ -63,18 +63,22 @@ function setup() {
 					case options[0]:
 						selectedOption = 0;
 						setup();
+						draw();
 						break;
 					case options[1]:
 						selectedOption = 1;
 						setup();
+						draw();
 						break;
 					case options[2]:
 						selectedOption = 2;
 						setup();
+						draw();
 						break;
 					case options[3]:
 						selectedOption = 3;
 						setup();
+						draw();
 						break;
 					default:
 						console.log('Error!')
@@ -153,7 +157,7 @@ function draw() {
 	//Azért inkrementálunk előbb, mert a resetnél nem akarjuk elveszteni a 0 értéket
 	currentFrame++;
 	frameCount++;
-	
+
 	stroke(25);
 	fill(200);
 	drawTriangle(triPos.x, triPos.y, triPos.h, triPos.fi);
