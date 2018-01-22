@@ -16,9 +16,8 @@ function setup() {
 		createDiv('').id('menu-strip');
 		createDiv('').id('button-wrapper').parent('menu-strip').style('width', '120px').style('display', 'inline-block');
 		createDiv('').id('options-wrapper').parent('menu-strip').style('width', '600px').style('display', 'inline-block');
-		wrapper1=createDiv('').id('slider-wrapper').parent('menu-strip').style('display', 'inline-block');
-		wrapper2=createDiv('').id('slider-wrapper2').parent('menu-strip').style('display', 'inline-block');
-		//	createDiv('').id('options-wrapper2').parent('menu-strip').style('width', '200px').style('display', 'inline-block');
+		wrapper1 = createDiv('').id('slider-wrapper').parent('menu-strip').style('display', 'inline-block');
+		wrapper2 = createDiv('').id('slider-wrapper2').parent('menu-strip').style('display', 'inline-block');
 
 		canvas = createCanvas(screen.width * 0.98, screen.height)
 			.style('z-index', -1)
@@ -83,13 +82,6 @@ function setup() {
 
 			});
 
-
-		//createDiv('').parent('options-wrapper').child(radioButton.option('Egységválasz'));
-		//createDiv('').parent('options-wrapper').child(radioButton.option('Kétszeres válasz'));
-		//createDiv('').parent('options-wrapper').child(radioButton.option('Időben eltolt gerjesztés'));
-		//createDiv('').parent('options-wrapper').child(radioButton.option('Interaktív'));
-
-
 		options.push(radioButton.option('Egységválasz'));
 		options.push(radioButton.option('Kétszeres válasz'));
 		options.push(radioButton.option('Időben eltolt gerjesztés'));
@@ -122,13 +114,14 @@ function setup() {
 	modes(selectedOption);
 	tankPos = {x1: 150, y1: 50, x2: 250, y2: 300};
 	tankLevel = {x1: 150, y1: 50 + (tankPos.y2 - tankPos.y1) * (1 - startValueSlider.value() / 100), x2: 250, y2: 300};
-	triPos = {x: 500, y: 300, h: 250, fi: Math.PI / 8};
-	triLevel = {x: 500, y: 300, h: 250, fi: Math.PI / 8};
 
+	triPos = {x: 200, y: 600, h: 250, fi: Math.PI / 8};
+	triLevel = {x: triPos.x, y: triPos.y, h: triPos.h * startValueSlider.value() / 100, fi: triPos.fi};
 
 	stroke(150);
 	for (let i = 0; i < 7; i++) {
-		line(tankPos.x2, tankPos.y1 + (tankPos.y2 - tankPos.y1) / 6 * i, screen.width, tankPos.y1 + (tankPos.y2 - tankPos.y1) / 6 * i)
+		line(tankPos.x2, tankPos.y1 + (tankPos.y2 - tankPos.y1) / 6 * i, screen.width, tankPos.y1 + (tankPos.y2 - tankPos.y1) / 6 * i);
+		line(triPos.x, (triPos.y - triPos.h / 6 * i), screen.width, triPos.y - triPos.h / 6 * i)
 	}
 }
 
@@ -142,15 +135,21 @@ function draw() {
 	fill(0, 0, 255);
 	rect(tankLevel.x1, tankLevel.y1, tankLevel.x2, tankLevel.y2, 2);
 	//if (tankLevel.y1 !== tankLevel.y2) tankLevel.y1++;
-	if (tankLevel.y1 <= tankLevel.y2) loss(tankLevel, lossSlider.value(), 'RECT');
+	loss(tankLevel, lossSlider.value(), 'RECT');
+
 	tankDiagram[currentFrame] = {val: tankLevel.y1 - tankPos.y1, t: currentFrame};
-	drawGraph(tankPos.x2 + 25, tankPos.y1, 500, 400, tankDiagram);
-	/*fill(200);
+	drawGraph(tankPos.x2 + 75, tankPos.y1, 500, 400, tankDiagram);
+
+	triDiagram[currentFrame] = {val: triPos.h - triLevel.h, t: currentFrame};
+	drawGraph(triPos.x + triPos.h * Math.tan(triPos.fi) + 25, triPos.y - triPos.h, 500, 400, triDiagram);
+
+	stroke(25);
+	fill(200);
 	drawTriangle(triPos.x, triPos.y, triPos.h, triPos.fi);
 	fill(0, 255, 0);
 	drawTriangle(triLevel.x, triLevel.y, triLevel.h, triLevel.fi);
-	if (triLevel.y <= triPos.y) loss(triLevel, 0.5, 'TRIANGLE');
-*/
+	if (triLevel.y <= triPos.y) loss(triLevel, lossSlider.value(), 'TRIANGLE');
+
 	currentFrame++;
 	frameCount++;
 
@@ -164,10 +163,16 @@ function draw() {
 
 
 function impulse(gain) {
-	//if (tankPos.y2 - (tankPos.y2 - tankPos.y1) * gain < tankLevel.y1) tankLevel.y1 = tankPos.y2 - (tankPos.y2 - tankPos.y1) * gain
-
 	tankLevel.y1 -= (tankPos.y2 - tankPos.y1) * gain;
-	if (tankLevel.y1 < tankPos.y1) tankLevel.y1 = tankPos.y1
+	if (tankLevel.y1 < tankPos.y1) tankLevel.y1 = tankPos.y1;
+
+
+	//T'=h^2*tg(fi)*gain+T0
+	//h'=sqrt(T'/T)*h
+	let T0 =triLevel.h * triLevel.h * Math.tan(triLevel.fi);
+	let T=triPos.h * triPos.h * Math.tan(triPos.fi);
+	triLevel.h=Math.sqrt((T0+T*gain)/T)*triPos.h;
+	if (triLevel.h > triPos.h) triLevel.h = triPos.h
 }
 
 
@@ -179,9 +184,12 @@ function impulse(gain) {
  */
 function loss(pos, rate, type) {
 	let area = undefined;
+	/**
+	 * Téglalap esetén mivel a csökkenés lineáris, így
+	 */
 	if (type === 'RECT') {
 		area = (pos.x2 - pos.x1) * (pos.y2 - pos.y1);
-		area *= (1 - rate / 100);
+		area *= (1 - rate/100);
 		pos.y1 = pos.y2 - area / (pos.x2 - pos.x1)
 	}
 	if (type === 'TRIANGLE') {
@@ -189,7 +197,8 @@ function loss(pos, rate, type) {
 		area = z * pos.h;
 		area *= (1 - rate / 100);
 		z *= Math.sqrt(1 - rate / 100);
-		pos.h = area / z;
+		if(z!==0) pos.h = area / z;
+		else pos.h=0;
 	}
 }
 
@@ -223,7 +232,7 @@ function modes(mode) {
 			impulseGainSlider.value(10);
 			hide();
 			break;
-			//Kétszeres egységugrás
+		//Kétszeres egységugrás
 		case 1:
 			startValueSlider.value(0);
 			lossSlider.value(0);
@@ -231,7 +240,7 @@ function modes(mode) {
 			impulseGainSlider.value(20);
 			hide();
 			break;
-			//Homokvár
+		//Homokvár
 		case 2:
 			startValueSlider.value(100);
 			lossSlider.value(0.5);
@@ -239,18 +248,18 @@ function modes(mode) {
 			impulseGainSlider.value(100);
 			hide();
 			break;
-			//Interaktív
+		//Interaktív
 		case 3:
-			wrapper1.style('display','inline-block');
-			wrapper2.style('display','inline-block');
+			wrapper1.style('display', 'inline-block');
+			wrapper2.style('display', 'inline-block');
 			break;
 
-		default: 
+		default:
 			console.log('Mode error')
 	}
 
 	function hide() {
-		wrapper1.style('display','none');
-		wrapper2.style('display','none');
+		wrapper1.style('display', 'none');
+		wrapper2.style('display', 'none');
 	}
 }
