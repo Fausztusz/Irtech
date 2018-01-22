@@ -1,6 +1,6 @@
 let canvas;
 let tankPos, triPos, tankLevel;
-let tankDiagram, triDiagram;
+let tankDiagram, triLevel, triDiagram;
 let currentFrame, frameCount;
 let once = true;
 let radioButton, startValueSlider, impulseGainSlider, impulseFrequencySlider, lossSlider;
@@ -107,8 +107,10 @@ function setup() {
 	background(230);
 	tankDiagram = new Array(1500);
 	triDiagram = new Array(1500);
-	currentFrame = 0;
-	frameCount = 0;
+
+	//A resetelés miatt kell -1 ről indítani, mert nem a draw() végén inkrementálni, vagy elveszik a 0. elem
+	currentFrame = -1;
+	frameCount = -1;
 
 
 	modes(selectedOption);
@@ -138,11 +140,20 @@ function draw() {
 	loss(tankLevel, lossSlider.value(), 'RECT');
 
 	tankDiagram[currentFrame] = {val: tankLevel.y1 - tankPos.y1, t: currentFrame};
-	drawGraph(tankPos.x2 + 75, tankPos.y1, 500, 400, tankDiagram);
-
 	triDiagram[currentFrame] = {val: triPos.h - triLevel.h, t: currentFrame};
-	drawGraph(triPos.x + triPos.h * Math.tan(triPos.fi) + 25, triPos.y - triPos.h, 500, 400, triDiagram);
 
+	if (currentFrame === 0) {
+		tankDiagram[0].h = tankPos.y2 - tankPos.y1;
+		triDiagram[0].h = triPos.h;
+	}
+
+	drawGraph(tankPos.x2 + 75, tankPos.y1, tankDiagram);
+	drawGraph(triPos.x + triPos.h * Math.tan(triPos.fi) + 25, triPos.y - triPos.h, triDiagram);
+
+	//Azért inkrementálunk előbb, mert a resetnél nem akarjuk elveszteni a 0 értéket
+	currentFrame++;
+	frameCount++;
+	
 	stroke(25);
 	fill(200);
 	drawTriangle(triPos.x, triPos.y, triPos.h, triPos.fi);
@@ -150,8 +161,6 @@ function draw() {
 	drawTriangle(triLevel.x, triLevel.y, triLevel.h, triLevel.fi);
 	if (triLevel.y <= triPos.y) loss(triLevel, lossSlider.value(), 'TRIANGLE');
 
-	currentFrame++;
-	frameCount++;
 
 	if (impulseFrequencySlider.value() !== 0) {
 		if (frameCount >= impulseFrequencySlider.value()) {
@@ -169,9 +178,9 @@ function impulse(gain) {
 
 	//T'=h^2*tg(fi)*gain+T0
 	//h'=sqrt(T'/T)*h
-	let T0 =triLevel.h * triLevel.h * Math.tan(triLevel.fi);
-	let T=triPos.h * triPos.h * Math.tan(triPos.fi);
-	triLevel.h=Math.sqrt((T0+T*gain)/T)*triPos.h;
+	let T0 = triLevel.h * triLevel.h * Math.tan(triLevel.fi);
+	let T = triPos.h * triPos.h * Math.tan(triPos.fi);
+	triLevel.h = Math.sqrt((T0 + T * gain) / T) * triPos.h;
 	if (triLevel.h > triPos.h) triLevel.h = triPos.h
 }
 
@@ -189,7 +198,7 @@ function loss(pos, rate, type) {
 	 */
 	if (type === 'RECT') {
 		area = (pos.x2 - pos.x1) * (pos.y2 - pos.y1);
-		area *= (1 - rate/100);
+		area *= (1 - rate / 100);
 		pos.y1 = pos.y2 - area / (pos.x2 - pos.x1)
 	}
 	if (type === 'TRIANGLE') {
@@ -197,14 +206,15 @@ function loss(pos, rate, type) {
 		area = z * pos.h;
 		area *= (1 - rate / 100);
 		z *= Math.sqrt(1 - rate / 100);
-		if(z!==0) pos.h = area / z;
-		else pos.h=0;
+		if (z !== 0) pos.h = area / z;
+		else pos.h = 0;
 	}
 }
 
 
-function drawGraph(x, y, w, h, arr) {
+function drawGraph(x, y, arr) {
 	stroke(255, 0, 0);
+	if (currentFrame === 1) line(arr[1].t + x, arr[1].val + y, x, y + arr[0].h);
 	if (currentFrame > 1) {
 		line(arr[currentFrame].t + x, arr[currentFrame].val + y, arr[currentFrame - 1].t + x, arr[currentFrame - 1].val + y);
 		if (arr[currentFrame].t + x >= screen.width || currentFrame === 1499) setup();
